@@ -1,0 +1,5 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>GreenShift Tracker</title>
+<style>body{font-family:system-ui;background:#091710;color:#ecfdf5;padding:24px}.card{max-width:740px;margin:0 auto;background:#11261b;padding:22px;border-radius:12px}input{background:#091710;color:#fff;padding:8px;border-radius:6px;border:1px solid #1e4631;margin:4px;width:110px}button{background:#10b981;color:#052e16;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;margin-top:8px}</style></head>
+<body><div class="card"><h1>GreenShift Tracker</h1><p>Monthly carbon footprint &amp; reduction planner.</p>kWh/mo: <input id="k" type="number" value="180"> Commute km/wk: <input id="c" type="number" value="40"> Meat meals/wk: <input id="m" type="number" value="7"><br><button id="b">Calculate CO2e</button><pre id="o"></pre></div>
+<script type="module">import { calcCarbon } from "./carbon.mjs"; document.getElementById("b").onclick = () => { document.getElementById("o").textContent = JSON.stringify(calcCarbon({ kwhPerMonth: Number(k.value), commuteKmWeek: Number(c.value), meatMealsWeek: Number(m.value) }), null, 2); };</script></body></html>
