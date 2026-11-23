@@ -1,5 +1,135 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>GreenShift Tracker</title>
-<style>body{font-family:system-ui;background:#091710;color:#ecfdf5;padding:24px}.card{max-width:740px;margin:0 auto;background:#11261b;padding:22px;border-radius:12px}input{background:#091710;color:#fff;padding:8px;border-radius:6px;border:1px solid #1e4631;margin:4px;width:110px}button{background:#10b981;color:#052e16;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;margin-top:8px}</style></head>
-<body><div class="card"><h1>GreenShift Tracker</h1><p>Monthly carbon footprint &amp; reduction planner.</p>kWh/mo: <input id="k" type="number" value="180"> Commute km/wk: <input id="c" type="number" value="40"> Meat meals/wk: <input id="m" type="number" value="7"><br><button id="b">Calculate CO2e</button><pre id="o"></pre></div>
-<script type="module">import { calcCarbon } from "./carbon.mjs"; document.getElementById("b").onclick = () => { document.getElementById("o").textContent = JSON.stringify(calcCarbon({ kwhPerMonth: Number(k.value), commuteKmWeek: Number(c.value), meatMealsWeek: Number(m.value) }), null, 2); };</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GreenShift Tracker — Scope 1/2/3 Carbon &amp; Net-Zero Pathway Studio</title>
+  <style>
+    :root { --bg: #05110c; --card: #0b1f16; --card2: #112c20; --border: #1e4734; --fg: #ecfdf5; --muted: #86efac; --accent: #22c55e; --cyan: #38bdf8; --amber: #f59e0b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: radial-gradient(circle at top right, #0e3323, var(--bg) 55%); color: var(--fg); line-height: 1.5; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.3rem; }
+    h1 { margin: 0; font-size: 1.65rem; }
+    .sub { color: #a7f3d0; font-size: 0.9rem; margin: 0.2rem 0 0; opacity: 0.85; }
+    .btns { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    button { background: var(--card2); color: var(--fg); border: 1px solid var(--border); padding: 0.48rem 0.85rem; border-radius: 8px; font-weight: 600; font-size: 0.83rem; cursor: pointer; }
+    button.primary { background: linear-gradient(135deg, #16a34a, #0d9488); border-color: transparent; color: #fff; }
+    .grid { display: grid; grid-template-columns: 330px 1fr; gap: 1.2rem; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.15rem; margin-bottom: 1.1rem; }
+    .panel h2 { margin: 0 0 0.8rem; font-size: 1rem; color: #bbf7d0; }
+    .field { margin-bottom: 0.68rem; }
+    .field label { display: block; font-size: 0.8rem; color: #a7f3d0; margin-bottom: 0.2rem; }
+    .field input { width: 100%; background: #06140e; border: 1px solid var(--border); border-radius: 7px; padding: 0.45rem 0.6rem; color: var(--fg); font-size: 0.9rem; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.8rem; margin-bottom: 1.1rem; }
+    .kpi { background: var(--card2); border: 1px solid var(--border); border-radius: 11px; padding: 0.85rem; }
+    .kpi .lbl { font-size: 0.74rem; color: #86efac; text-transform: uppercase; }
+    .kpi .val { font-size: 1.35rem; font-weight: 700; margin-top: 0.2rem; }
+    .bar-row { margin-bottom: 0.65rem; }
+    .bar-head { display: flex; justify-content: space-between; font-size: 0.84rem; margin-bottom: 0.2rem; }
+    .bar-track { height: 11px; background: #06140e; border-radius: 999px; overflow: hidden; border: 1px solid #183a2a; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #38bdf8); border-radius: 999px; }
+    .lever { background: #081a12; border: 1px solid var(--border); border-radius: 9px; padding: 0.65rem 0.8rem; margin-bottom: 0.55rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: 0.86rem; }
+    .pill { background: rgba(34,197,94,0.2); color: #4ade80; padding: 0.18rem 0.55rem; border-radius: 999px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>GreenShift Tracker</h1>
+        <p class="sub">EPA/IEA Scope 1, 2 &amp; 3 Carbon Footprint Calculator &amp; Ranked Net-Zero Decarbonization Planner</p>
+      </div>
+      <div class="btns">
+        <button data-profile="student_commuter">Student Commuter</button>
+        <button data-profile="remote_startup">5-Person Startup</button>
+        <button data-profile="eco_champion">Eco Champion</button>
+        <button class="primary" id="exportBtn">Export ESG Audit (.md)</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <aside class="panel">
+        <h2>Activity Inputs</h2>
+        <div class="field"><label>Team / Household Size</label><input id="teamSize" type="number" min="1" /></div>
+        <div class="field"><label>Petrol Car Commute (km / week)</label><input id="carPetrolKmWeek" type="number" /></div>
+        <div class="field"><label>Public Transit (km / week)</label><input id="transitKmWeek" type="number" /></div>
+        <div class="field"><label>Electricity Use (kWh / month)</label><input id="electricityKwhMonth" type="number" /></div>
+        <div class="field"><label>Renewable Grid Share (%)</label><input id="renewableSharePct" type="number" min="0" max="100" /></div>
+        <div class="field"><label>Beef Meals / week</label><input id="beefMealsWeek" type="number" /></div>
+        <div class="field"><label>Plant-Based Meals / week</label><input id="plantMealsWeek" type="number" /></div>
+        <div class="field"><label>Flight Hours / year</label><input id="flightHoursYear" type="number" /></div>
+        <div class="field"><label>Cloud / AI GPU Hours / month</label><input id="cloudHoursMonth" type="number" /></div>
+      </aside>
+
+      <main>
+        <div class="kpis" id="kpis"></div>
+
+        <div class="panel">
+          <h2>Emissions Breakdown by Source (kg CO2e / year)</h2>
+          <div id="bars"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Ranked Decarbonization Pathway</h2>
+          <div id="levers"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import { PROFILES, calcCarbon, buildEsgReport } from "./carbon.mjs";
+
+    const fields = [
+      "teamSize", "carPetrolKmWeek", "transitKmWeek", "electricityKwhMonth",
+      "renewableSharePct", "beefMealsWeek", "plantMealsWeek", "flightHoursYear", "cloudHoursMonth"
+    ];
+    let latest = null;
+
+    function applyProfile(key) {
+      const p = PROFILES[key];
+      fields.forEach(id => document.getElementById(id).value = p[id]);
+      render();
+    }
+
+    function render() {
+      const cfg = {};
+      fields.forEach(id => cfg[id] = Number(document.getElementById(id).value));
+      latest = calcCarbon(cfg);
+
+      document.getElementById("kpis").innerHTML = `
+        <div class="kpi"><div class="lbl">Annual Footprint</div><div class="val">${latest.totalAnnualTonnes} tCO2e</div><div style="font-size:0.78rem;color:#86efac">${latest.totalAnnualKg.toLocaleString()} kg / yr</div></div>
+        <div class="kpi"><div class="lbl">Per Capita (2.3t Target)</div><div class="val">${latest.perCapitaTonnes} t</div><div style="font-size:0.78rem;color:#86efac">${latest.rating}</div></div>
+        <div class="kpi"><div class="lbl">After Top Levers</div><div class="val" style="color:#4ade80">${(latest.projectedAnnualKg / 1000).toFixed(2)} t</div><div style="font-size:0.78rem;color:#86efac">Saves ${latest.maxSavingsKg.toLocaleString()} kg/yr</div></div>
+        <div class="kpi"><div class="lbl">Offset Equivalent</div><div class="val">${latest.treesToOffset} trees</div><div style="font-size:0.78rem;color:#86efac">Scope 1/2/3 verified</div></div>
+      `;
+
+      const maxKg = Math.max(1, ...latest.breakdown.map(b => b.kg));
+      document.getElementById("bars").innerHTML = latest.breakdown.map(b => `
+        <div class="bar-row">
+          <div class="bar-head"><span><strong>${b.key}</strong> (${b.scope})</span><span>${b.kg.toLocaleString()} kg (${Math.round((b.kg / Math.max(1, latest.totalAnnualKg)) * 100)}%)</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, (b.kg / maxKg) * 100)}%"></div></div>
+        </div>
+      `).join("");
+
+      document.getElementById("levers").innerHTML = latest.levers.length
+        ? latest.levers.map(l => `<div class="lever"><span>${l.action}</span><span class="pill">-${l.savedKgYear.toLocaleString()} kg/yr</span></div>`).join("")
+        : `<div class="lever"><span>Already operating at ultra-low Paris-aligned emissions!</span><span class="pill">Grade A</span></div>`;
+    }
+
+    document.querySelectorAll("[data-profile]").forEach(b => b.addEventListener("click", () => applyProfile(b.dataset.profile)));
+    fields.forEach(id => document.getElementById(id).addEventListener("input", render));
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      if (!latest) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([buildEsgReport(latest)], { type: "text/markdown" }));
+      a.download = "greenshift-esg-audit.md";
+      a.click();
+    });
+
+    applyProfile("student_commuter");
+  </script>
+</body>
+</html>
